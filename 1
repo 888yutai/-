@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專屬資料檢視</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 flex flex-col items-center justify-center">
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
+        <h1 class="text-xl font-bold text-gray-800 mb-4 text-center">📋 單筆資料檢視</h1>
+        
+        <div id="loading" class="text-center py-8 text-gray-500">正在安全載入您的專屬資料...</div>
+        
+        <div id="error-box" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <span id="error-msg"></span>
+        </div>
+
+        <!-- 直式卡片容器 -->
+        <div id="card-container" class="space-y-3 hidden">
+            <!-- 動態生成直式欄位 -->
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ 請換成您剛剛部署的 Google Apps Script 網址
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz42SIgGVbz4JuLtiI-I8qiO7CpVianvPUHl6SlpmfKtkCPsESPmZz9x8qdB4BirAzi/exec";
+
+        async function loadData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (!token) {
+                showError("網址缺少專屬識別碼 (token)，無法檢視資料。");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${GAS_URL}?token=${token}`);
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    renderCard(result.data);
+                } else {
+                    showError(result.message || "找不到對應的資料");
+                }
+            } catch (err) {
+                showError("連線伺服器失敗，請稍後再試。");
+            }
+        }
+
+        function renderCard(data) {
+            document.getElementById('loading').style.display = 'none';
+            const container = document.getElementById('card-container');
+            container.classList.remove('hidden');
+
+            let html = '';
+            for (const [key, value] of Object.entries(data)) {
+                // 略過 Token 欄位本身，不顯示在畫面上
+                if (key === 'Token') continue;
+
+                html += `
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 flex flex-col">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">${key}</span>
+                        <span class="text-gray-800 font-medium text-base mt-1">${value || '(無資料)'}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            const errorBox = document.getElementById('error-box');
+            document.getElementById('error-msg').innerText = msg;
+            errorBox.classList.remove('hidden');
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
